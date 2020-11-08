@@ -341,7 +341,9 @@ const App = () => {
         onClose={handleClose}
         aria-labelledby="form-dialog-title"
       >
-        <DialogTitle id="form-dialog-title">Add User</DialogTitle>
+        <DialogTitle id="form-dialog-title">
+          {mode === 2 ? "Update" : "Add "} User
+        </DialogTitle>
         <DialogContent>
           <DialogContentText>Please enter your details here.</DialogContentText>
           {mode === 2 ? (
