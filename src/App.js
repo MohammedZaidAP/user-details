@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import MaterialTable from "material-table";
 import Button from "@material-ui/core/Button";
 import TextField from "@material-ui/core/TextField";
@@ -13,6 +13,11 @@ import FormHelperText from "@material-ui/core/FormHelperText";
 import FormControl from "@material-ui/core/FormControl";
 import Select from "@material-ui/core/Select";
 import useStyles from "./style";
+import { store } from "react-notifications-component";
+import ReactNotification from "react-notifications-component";
+import "react-notifications-component/dist/theme.css";
+import db from "./firebase/firebase";
+import "./App.css";
 
 const App = () => {
   const [open, setOpen] = useState(false);
@@ -33,16 +38,67 @@ const App = () => {
 
   const classes = useStyles();
 
-  const [age, setAge] = useState("");
+  const [ids, setIds] = useState("");
 
-  const handleChange = (event) => {
-    setAge(event.target.value);
+  const [validmail, setIsvalidmail] = useState(false);
+  const [validFirstName, setIsvalidFirstName] = useState(false);
+  const [validLastName, setIsvalidLastName] = useState(false);
+
+  const [users, setUsers] = useState([]);
+
+  const [isLoad, setisLoad] = useState(true);
+  const [swap, setSwap] = useState(false);
+  const [existingMail, setExistingMail] = useState(false);
+
+  useEffect(() => {
+    db.collection("users")
+      .doc("Z0UyTfDgC7XRSVc1izGZ")
+      .onSnapshot((snapshot) => setUsers(snapshot.data().data));
+  }, []);
+
+  useEffect(() => {
+    if (users.length > 0) {
+      setisLoad(false);
+    }
+  }, [users]);
+
+  console.log(users);
+
+  const handleChange = (event, id) => {
+    setIds(event.target.value);
+    if (event.target.value === id) {
+      setSwap(true);
+    } else {
+      setSwap(false);
+    }
   };
 
   const handleClickAdd = (event) => {
-    setOpen(true);
-    setMode(1);
-    setUserData({});
+    if (users.length >= 20) {
+      store.addNotification({
+        title: "warning!",
+        message: `Cannot perform add as data exceeds the limit 20`,
+        type: "warning",
+        insert: "top",
+        container: "top-right",
+        animationIn: ["animated", "fadeIn"],
+        animationOut: ["animated", "fadeOut"],
+        dismiss: {
+          duration: 2000,
+          onScreen: true,
+          showIcon: true,
+          pauseOnHover: true,
+        },
+      });
+    } else {
+      setOpen(true);
+      setMode(1);
+      setUserData({});
+      setuserId("");
+      setuserEmail("");
+      setuserFirstName("");
+      setuserLastName("");
+    }
   };
 
   const handleClickEdit = (event, rowData) => {
@@ -51,10 +107,42 @@ const App = () => {
     setUserData(rowData);
   };
 
+  const handleClickDelete = (event, rowData) => {
+    let insertDB = [...users];
+
+    const indexToBeDeleted = insertDB.findIndex(
+      (each) => each.id === rowData.id
+    );
+    insertDB.splice(indexToBeDeleted, 1);
+
+    db.collection("users").doc("Z0UyTfDgC7XRSVc1izGZ").update({
+      data: insertDB,
+    });
+
+    store.addNotification({
+      title: "Success!",
+      message: `${rowData.id} The delete operation is completed`,
+      type: "success",
+      insert: "top",
+      container: "top-right",
+      animationIn: ["animated", "fadeIn"],
+      animationOut: ["animated", "fadeOut"],
+      dismiss: {
+        duration: 2000,
+        onScreen: true,
+        showIcon: true,
+        pauseOnHover: true,
+      },
+    });
+  };
+
   const handleClose = () => {
     setOpen(false);
     setMode(0);
     setisChange(false);
+    setIsvalidmail(false);
+    setIsvalidFirstName(false);
+    setIsvalidLastName(false);
   };
 
   const onChangeHandler = (event) => {
@@ -62,21 +150,21 @@ const App = () => {
     switch (event.target.id) {
       case "firstname":
         setuserFirstName(event.target.value);
-        if (!isChange) {
+        if (!isChange && userData.id) {
           setuserEmail(userData.mailid);
           setuserLastName(userData.lastname);
         }
         break;
       case "mailid":
         setuserEmail(event.target.value);
-        if (!isChange) {
+        if (!isChange && userData.id) {
           setuserFirstName(userData.firstname);
           setuserLastName(userData.lastname);
         }
         break;
       case "lastname":
         setuserLastName(event.target.value);
-        if (!isChange) {
+        if (!isChange && userData.id) {
           setuserFirstName(userData.firstname);
           setuserEmail(userData.mailid);
         }
@@ -87,19 +175,78 @@ const App = () => {
   };
 
   const handleSubmit = (formIndex, toIndex) => {
-    console.log(formIndex);
-    console.log(toIndex);
-    let toData = [...data];
-    console.log("toData " + toData);
-    let fromData = data[formIndex - 1];
-    let toDataD = data[toIndex - 1];
-    console.log("fromData " + fromData);
-    console.log("toDataD " + toDataD);
-    toData[formIndex - 1] = toDataD;
-    toData[toIndex - 1] = fromData;
-    data = [...toData];
-    console.log(data);
-    handleClose();
+    if (isChange) {
+      setIsvalidFirstName(
+        !(userFirstName.length > 0 && userFirstName.length < 46)
+      );
+      setIsvalidLastName(
+        !(userLastName.length > 0 && userLastName.length < 46)
+      );
+      let regex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+      setIsvalidmail(!regex.test(userEmail));
+      //handleClose();
+    } else {
+      store.addNotification({
+        title: "Info!",
+        message: `No Changes to Update`,
+        type: "info",
+        insert: "top",
+        container: "tops-right",
+        animationIn: ["animated", "fadeIn"],
+        animationOut: ["animated", "fadeOut"],
+        dismiss: {
+          duration: 2000,
+          onScreen: true,
+          showIcon: true,
+          pauseOnHover: true,
+        },
+      });
+    }
+  };
+
+  const handleAddSubmit = () => {
+    setExistingMail(false);
+    setIsvalidFirstName(
+      !(userFirstName.length > 0 && userFirstName.length < 46)
+    );
+    setIsvalidLastName(!(userLastName.length > 0 && userLastName.length < 46));
+    let regex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
+    setIsvalidmail(!regex.test(userEmail));
+
+    if (regex.test(userEmail) && !validFirstName && !validLastName) {
+      let insertDB = [...users];
+
+      const existingMailIndex = users.findIndex(
+        (each) => each.mailid === userEmail
+      );
+      if (existingMailIndex == -1) {
+        const idToBEInserted = Math.max.apply(
+          Math,
+          users.map(function (each) {
+            return each.id;
+          })
+        );
+        const toDB = {
+          id: idToBEInserted + 1,
+          mailid: userEmail,
+          firstname: userFirstName,
+          lastname: userLastName,
+        };
+        insertDB.push(toDB);
+
+        db.collection("users").doc("Z0UyTfDgC7XRSVc1izGZ").update({
+          data: insertDB,
+        });
+        handleClose(true);
+        setuserId("");
+        setuserEmail("");
+        setuserFirstName("");
+        setuserLastName("");
+        setExistingMail(false);
+      } else {
+        setExistingMail(true);
+      }
+    }
   };
 
   let data = [
@@ -135,6 +282,25 @@ const App = () => {
     },
   ];
 
+  const swapData = (frommId, toId) => {
+    let infoData = [...users];
+    const frommIndex = infoData.findIndex((each) => each.id === frommId);
+    const toIndex = infoData.findIndex((each) => each.id === toId);
+
+    [infoData[frommIndex], infoData[toIndex]] = [
+      infoData[toIndex],
+      infoData[frommIndex],
+    ];
+    infoData[frommIndex].id = frommId;
+    infoData[toIndex].id = toId;
+    db.collection("users").doc("Z0UyTfDgC7XRSVc1izGZ").update({
+      data: infoData,
+    });
+    if (!swap) {
+      handleClose(true);
+    }
+  };
+
   const columns = [
     { title: "Id", field: "id" },
     { title: "Mail Id", field: "mailid" },
@@ -143,7 +309,8 @@ const App = () => {
   ];
 
   return (
-    <div>
+    <div className="app">
+      <ReactNotification />
       <MaterialTable
         title="User Details"
         options={{
@@ -152,8 +319,9 @@ const App = () => {
           sorting: false,
           paging: false,
         }}
-        data={data}
+        data={users}
         columns={columns}
+        isLoading={isLoad}
         actions={[
           {
             icon: "add",
@@ -169,7 +337,7 @@ const App = () => {
           {
             icon: "delete",
             tooltip: "Delete User",
-            onClick: (event, rowData) => handleClickEdit(event, rowData),
+            onClick: (event, rowData) => handleClickDelete(event, rowData),
           },
         ]}
       />
@@ -181,10 +349,7 @@ const App = () => {
       >
         <DialogTitle id="form-dialog-title">Add User</DialogTitle>
         <DialogContent>
-          <DialogContentText>
-            To subscribe to this website, please enter your email address here.
-            We will send updates occasionally.
-          </DialogContentText>
+          <DialogContentText>Please enter your details here.</DialogContentText>
           {mode === 2 ? (
             <TextField
               autoFocus
@@ -200,17 +365,40 @@ const App = () => {
             margin="dense"
             id="mailid"
             label="Email Address"
-            type="email"
+            required
+            error={validmail || existingMail}
             fullWidth
+            helperText={
+              validmail
+                ? "Email ID is in Incorrect  Format !"
+                : existingMail
+                ? "Already Email Exists!!"
+                : null
+            }
             value={isChange ? userEmail : userData.mailid}
+            // value={
+            //   isChange
+            //     ? userEmail
+            //     : userData.mailid == undefined
+            //     ? userData.mailid
+            //     : ""
+            // }
             onChange={(event) => onChangeHandler(event)}
           />
+          {/* <p className="signInfo">
+            {validmail ? "Incorrect Email ID Format !" : null}
+          </p> */}
           <TextField
             autoFocus
             margin="dense"
             id="firstname"
             label="First Name"
+            required
+            error={validFirstName}
             fullWidth
+            helperText={
+              validFirstName ? "First Name should have length 1 - 45" : ""
+            }
             value={isChange ? userFirstName : userData.firstname}
             onChange={(event) => onChangeHandler(event)}
           />
@@ -219,7 +407,12 @@ const App = () => {
             margin="dense"
             id="lastname"
             label="Last Name"
+            required
+            error={validLastName}
             fullWidth
+            helperText={
+              validLastName ? "Last Name should have length 1 - 45" : ""
+            }
             value={isChange ? userLastName : userData.lastname}
             onChange={(event) => onChangeHandler(event)}
           />
@@ -231,18 +424,28 @@ const App = () => {
               <Select
                 labelId="demo-simple-select-helper-label"
                 id="demo-simple-select-helper"
-                value={age}
-                onChange={handleChange}
+                value={ids}
+                error={swap}
+                onChange={(event, id) => handleChange(event, userData.id)}
               >
                 <MenuItem value="">
                   <em>None</em>
                 </MenuItem>
+                {/* {let result = infoData.map(a => a.id);} */}
+                {users.map((each) => (
+                  <MenuItem value={each.id}>{each.id}</MenuItem>
+                ))}
+                {/* <MenuItem value={1}>1</MenuItem>
                 <MenuItem value={2}>2</MenuItem>
                 <MenuItem value={3}>3</MenuItem>
                 <MenuItem value={4}>4</MenuItem>
-                <MenuItem value={5}>5</MenuItem>
+                <MenuItem value={5}>5</MenuItem> */}
               </Select>
-              <FormHelperText>Some important helper text</FormHelperText>
+              <FormHelperText>
+                {!swap
+                  ? "Select Target ID to for a Data Swap"
+                  : "Source and Target Ids are same so cant swap"}
+              </FormHelperText>
             </FormControl>
           ) : null}
         </DialogContent>
@@ -250,12 +453,30 @@ const App = () => {
           <Button onClick={handleClose} color="primary">
             Cancel
           </Button>
-          <Button
+
+          {/* <Button
             onClick={(formIndex, toIndex) => handleSubmit(userData.id, 5)}
             color="primary"
           >
-            Submit
-          </Button>
+            {mode === 2 ? "Update" : "Add"}
+          </Button> */}
+          {mode === 2 ? (
+            <Button
+              // onClick={(formIndex, toIndex) => handleSubmit(userData.id, 5)}
+              onClick={
+                ids != ""
+                  ? (fromId, toId) => swapData(userData.id, ids)
+                  : () => handleSubmit()
+              }
+              color="primary"
+            >
+              {ids != "" ? "Swap" : "Update"}
+            </Button>
+          ) : (
+            <Button onClick={() => handleAddSubmit()} color="primary">
+              Insert
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
     </div>
