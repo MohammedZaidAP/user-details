@@ -174,22 +174,38 @@ const App = () => {
     }
   };
 
-  const handleSubmit = (formIndex, toIndex) => {
+  const handleSubmit = (Id) => {
     if (isChange) {
-      setValidFirstName(
-        !(userFirstName.length > 0 && userFirstName.length < 46)
-      );
-      setValidLastName(!(userLastName.length > 0 && userLastName.length < 46));
+      let firstNameCheck =
+        userFirstName.length > 0 && userFirstName.length < 46;
+      let lastNameCheck = userLastName.length > 0 && userLastName.length < 46;
       let regex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-      setValidmail(!regex.test(userEmail));
-      //handleClose();
+      let mailCheck = regex.test(userEmail);
+      setValidFirstName(!firstNameCheck);
+      setValidLastName(!lastNameCheck);
+      setValidmail(!mailCheck);
+
+      if (mailCheck && firstNameCheck && lastNameCheck) {
+        let updateDb = [...users];
+        const indexToBeUpdated = updateDb.findIndex((each) => each.id === Id);
+
+        updateDb[indexToBeUpdated].id = Id;
+        updateDb[indexToBeUpdated].mailid = userEmail;
+        updateDb[indexToBeUpdated].firstname = userFirstName;
+        updateDb[indexToBeUpdated].lastname = userLastName;
+
+        db.collection("users").doc("Z0UyTfDgC7XRSVc1izGZ").update({
+          data: updateDb,
+        });
+        handleClose(true);
+      }
     } else {
       store.addNotification({
         title: "Info!",
         message: `No Changes to Update`,
         type: "info",
         insert: "top",
-        container: "tops-right",
+        container: "top-right",
         animationIn: ["animated", "fadeIn"],
         animationOut: ["animated", "fadeOut"],
         dismiss: {
@@ -429,15 +445,11 @@ const App = () => {
                 <MenuItem value="">
                   <em>None</em>
                 </MenuItem>
-                {/* {let result = infoData.map(a => a.id);} */}
                 {users.map((each) => (
-                  <MenuItem value={each.id}>{each.id}</MenuItem>
+                  <MenuItem key={each.id} value={each.id}>
+                    {each.id}
+                  </MenuItem>
                 ))}
-                {/* <MenuItem value={1}>1</MenuItem>
-                <MenuItem value={2}>2</MenuItem>
-                <MenuItem value={3}>3</MenuItem>
-                <MenuItem value={4}>4</MenuItem>
-                <MenuItem value={5}>5</MenuItem> */}
               </Select>
               <FormHelperText>
                 {!swap
@@ -451,20 +463,12 @@ const App = () => {
           <Button onClick={handleClose} color="primary">
             Cancel
           </Button>
-
-          {/* <Button
-            onClick={(formIndex, toIndex) => handleSubmit(userData.id, 5)}
-            color="primary"
-          >
-            {mode === 2 ? "Update" : "Add"}
-          </Button> */}
           {mode === 2 ? (
             <Button
-              // onClick={(formIndex, toIndex) => handleSubmit(userData.id, 5)}
               onClick={
                 ids != ""
                   ? (fromId, toId) => swapData(userData.id, ids)
-                  : () => handleSubmit()
+                  : (Id) => handleSubmit(userData.id)
               }
               color="primary"
             >
