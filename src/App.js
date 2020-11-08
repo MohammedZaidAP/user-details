@@ -13,11 +13,13 @@ import FormHelperText from "@material-ui/core/FormHelperText";
 import FormControl from "@material-ui/core/FormControl";
 import Select from "@material-ui/core/Select";
 import useStyles from "./style";
-import { store } from "react-notifications-component";
-import ReactNotification from "react-notifications-component";
 import "react-notifications-component/dist/theme.css";
+import { toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 import db from "./firebase/firebase";
 import "./App.css";
+
+toast.configure();
 
 const App = () => {
   const [open, setOpen] = useState(false);
@@ -27,8 +29,6 @@ const App = () => {
   const [isChange, setisChange] = useState(false);
 
   const [userData, setUserData] = useState({});
-
-  const [userId, setuserId] = useState("");
 
   const [userEmail, setuserEmail] = useState("");
 
@@ -50,6 +50,8 @@ const App = () => {
   const [swap, setSwap] = useState(false);
   const [existingMail, setExistingMail] = useState(false);
 
+  const [disable, setDisable] = useState(false);
+
   useEffect(() => {
     db.collection("users")
       .doc("Z0UyTfDgC7XRSVc1izGZ")
@@ -57,44 +59,36 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    if (users.length > 0) {
-      setisLoad(false);
-    }
+    setisLoad(false);
   }, [users]);
-
-  console.log(users);
 
   const handleChange = (event, id) => {
     setIds(event.target.value);
     if (event.target.value === id) {
       setSwap(true);
-    } else {
+      setDisable(true);
+    } else if (event.target.value !== id) {
       setSwap(false);
+      setuserEmail(userData.mailid);
+      setuserFirstName(userData.firstname);
+      setuserLastName(userData.lastname);
+      setDisable(true);
+    }
+
+    if (event.target.value === "") {
+      setDisable(false);
     }
   };
 
   const handleClickAdd = (event) => {
     if (users.length >= 20) {
-      store.addNotification({
-        title: "warning!",
-        message: `Cannot perform add as data exceeds the limit 20`,
-        type: "warning",
-        insert: "top",
-        container: "top-right",
-        animationIn: ["animated", "fadeIn"],
-        animationOut: ["animated", "fadeOut"],
-        dismiss: {
-          duration: 2000,
-          onScreen: true,
-          showIcon: true,
-          pauseOnHover: true,
-        },
+      toast("Cannot Perform Add Operation as data exceeds the limit 20", {
+        type: "info",
       });
     } else {
       setOpen(true);
       setMode(1);
       setUserData({});
-      setuserId("");
       setuserEmail("");
       setuserFirstName("");
       setuserLastName("");
@@ -119,20 +113,8 @@ const App = () => {
       data: insertDB,
     });
 
-    store.addNotification({
-      title: "Success!",
-      message: `${rowData.id} The delete operation is completed`,
+    toast("Data corresponding to ID has been deleted", {
       type: "success",
-      insert: "top",
-      container: "top-right",
-      animationIn: ["animated", "fadeIn"],
-      animationOut: ["animated", "fadeOut"],
-      dismiss: {
-        duration: 2000,
-        onScreen: true,
-        showIcon: true,
-        pauseOnHover: true,
-      },
     });
   };
 
@@ -143,6 +125,8 @@ const App = () => {
     setValidmail(false);
     setValidFirstName(false);
     setValidLastName(false);
+    setDisable(false);
+    setIds("");
   };
 
   const onChangeHandler = (event) => {
@@ -187,33 +171,45 @@ const App = () => {
 
       if (mailCheck && firstNameCheck && lastNameCheck) {
         let updateDb = [...users];
-        const indexToBeUpdated = updateDb.findIndex((each) => each.id === Id);
+        let updateDbCheck = [...users];
+        const indexToBeIgnored = updateDb.findIndex((each) => each.id === Id);
+        updateDbCheck.splice(indexToBeIgnored, 1);
+        const existingMail = updateDbCheck.findIndex(
+          (each) => each.mailid === userEmail
+        );
+        if (existingMail === -1) {
+          const indexToBeUpdated = updateDb.findIndex((each) => each.id === Id);
 
-        updateDb[indexToBeUpdated].id = Id;
-        updateDb[indexToBeUpdated].mailid = userEmail;
-        updateDb[indexToBeUpdated].firstname = userFirstName;
-        updateDb[indexToBeUpdated].lastname = userLastName;
+          let insDB = {};
+          insDB.id = Id;
+          insDB.mailid = userEmail;
+          insDB.firstname = userFirstName;
+          insDB.lastname = userLastName;
 
-        db.collection("users").doc("Z0UyTfDgC7XRSVc1izGZ").update({
-          data: updateDb,
-        });
-        handleClose(true);
+          updateDb.splice(indexToBeUpdated, 1);
+
+          db.collection("users").doc("Z0UyTfDgC7XRSVc1izGZ").update({
+            data: updateDb,
+          });
+
+          updateDb.splice(indexToBeUpdated, 0, insDB);
+
+          db.collection("users").doc("Z0UyTfDgC7XRSVc1izGZ").update({
+            data: updateDb,
+          });
+
+          toast("Data Updated Successfully", {
+            type: "success",
+          });
+
+          handleClose(true);
+        } else {
+          setExistingMail(true);
+        }
       }
     } else {
-      store.addNotification({
-        title: "Info!",
-        message: `No Changes to Update`,
+      toast("No Changes to Update", {
         type: "info",
-        insert: "top",
-        container: "top-right",
-        animationIn: ["animated", "fadeIn"],
-        animationOut: ["animated", "fadeOut"],
-        dismiss: {
-          duration: 2000,
-          onScreen: true,
-          showIcon: true,
-          pauseOnHover: true,
-        },
       });
     }
   };
@@ -233,13 +229,16 @@ const App = () => {
       const existingMailIndex = users.findIndex(
         (each) => each.mailid === userEmail
       );
-      if (existingMailIndex == -1) {
-        const idToBEInserted = Math.max.apply(
+      if (existingMailIndex === -1) {
+        let idToBEInserted = Math.max.apply(
           Math,
           users.map(function (each) {
             return each.id;
           })
         );
+        if (users.length === 0) {
+          idToBEInserted = 0;
+        }
         const toDB = {
           id: idToBEInserted + 1,
           mailid: userEmail,
@@ -251,8 +250,10 @@ const App = () => {
         db.collection("users").doc("Z0UyTfDgC7XRSVc1izGZ").update({
           data: insertDB,
         });
+        toast("Data Inserted Successfully", {
+          type: "success",
+        });
         handleClose(true);
-        setuserId("");
         setuserEmail("");
         setuserFirstName("");
         setuserLastName("");
@@ -262,39 +263,6 @@ const App = () => {
       }
     }
   };
-
-  let data = [
-    {
-      id: 1,
-      mailid: "a@b.com",
-      firstname: "user1first",
-      lastname: "user1last",
-    },
-    {
-      id: 2,
-      mailid: "a@asd222.com",
-      firstname: "user2first",
-      lastname: "user2last",
-    },
-    {
-      id: 3,
-      mailid: "a@asd333.com",
-      firstname: "user3first",
-      lastname: "user3last",
-    },
-    {
-      id: 4,
-      mailid: "a@asd444.com",
-      firstname: "user4first",
-      lastname: "user4last",
-    },
-    {
-      id: 5,
-      mailid: "a@asd555.com",
-      firstname: "user5first",
-      lastname: "user5last",
-    },
-  ];
 
   const swapData = (frommId, toId) => {
     let infoData = [...users];
@@ -310,6 +278,9 @@ const App = () => {
     db.collection("users").doc("Z0UyTfDgC7XRSVc1izGZ").update({
       data: infoData,
     });
+    toast("Data Swapped Successfully", {
+      type: "success",
+    });
     if (!swap) {
       handleClose(true);
     }
@@ -324,38 +295,47 @@ const App = () => {
 
   return (
     <div className="app">
-      <ReactNotification />
-      <MaterialTable
-        title="User Details"
-        options={{
-          search: false,
-          filtering: false,
-          sorting: false,
-          paging: false,
-        }}
-        data={users}
-        columns={columns}
-        isLoading={isLoad}
-        actions={[
-          {
-            icon: "add",
-            tooltip: "Add User",
-            isFreeAction: true,
-            onClick: (event) => handleClickAdd(event),
-          },
-          {
-            icon: "edit",
-            tooltip: "Update User",
-            onClick: (event, rowData) => handleClickEdit(event, rowData),
-          },
-          {
-            icon: "delete",
-            tooltip: "Delete User",
-            onClick: (event, rowData) => handleClickDelete(event, rowData),
-          },
-        ]}
-      />
-      {/* {open ? <UserDialog user={userData} status={true} /> : null} */}
+      <div className="table">
+        <MaterialTable
+          title="User Details"
+          options={{
+            search: false,
+            filtering: false,
+            sorting: false,
+            paging: true,
+            pageSize: 10,
+            actionsColumnIndex: -1,
+            rowStyle: {
+              backgroundColor: "#EEE",
+            },
+            headerStyle: {
+              backgroundColor: "#01579b",
+              color: "#FFF",
+            },
+          }}
+          data={users}
+          columns={columns}
+          isLoading={isLoad}
+          actions={[
+            {
+              icon: "add",
+              tooltip: "Add User",
+              isFreeAction: true,
+              onClick: (event) => handleClickAdd(event),
+            },
+            {
+              icon: "edit",
+              tooltip: "Update User",
+              onClick: (event, rowData) => handleClickEdit(event, rowData),
+            },
+            {
+              icon: "delete",
+              tooltip: "Delete User",
+              onClick: (event, rowData) => handleClickDelete(event, rowData),
+            },
+          ]}
+        />
+      </div>
       <Dialog
         open={open}
         onClose={handleClose}
@@ -369,6 +349,7 @@ const App = () => {
               autoFocus
               margin="dense"
               id="id"
+              disabled={true}
               label="ID"
               fullWidth
               value={userData.id}
@@ -380,6 +361,7 @@ const App = () => {
             id="mailid"
             label="Email Address"
             required
+            disabled={disable}
             error={validmail || existingMail}
             fullWidth
             helperText={
@@ -390,24 +372,16 @@ const App = () => {
                 : null
             }
             value={isChange ? userEmail : userData.mailid}
-            // value={
-            //   isChange
-            //     ? userEmail
-            //     : userData.mailid == undefined
-            //     ? userData.mailid
-            //     : ""
-            // }
             onChange={(event) => onChangeHandler(event)}
           />
-          {/* <p className="signInfo">
-            {validmail ? "Incorrect Email ID Format !" : null}
-          </p> */}
+
           <TextField
             autoFocus
             margin="dense"
             id="firstname"
             label="First Name"
             required
+            disabled={disable}
             error={validFirstName}
             fullWidth
             helperText={
@@ -422,6 +396,7 @@ const App = () => {
             id="lastname"
             label="Last Name"
             required
+            disabled={disable}
             error={validLastName}
             fullWidth
             helperText={
@@ -466,13 +441,13 @@ const App = () => {
           {mode === 2 ? (
             <Button
               onClick={
-                ids != ""
+                ids !== ""
                   ? (fromId, toId) => swapData(userData.id, ids)
                   : (Id) => handleSubmit(userData.id)
               }
               color="primary"
             >
-              {ids != "" ? "Swap" : "Update"}
+              {ids !== "" ? "Swap" : "Update"}
             </Button>
           ) : (
             <Button onClick={() => handleAddSubmit()} color="primary">
