@@ -40,9 +40,9 @@ const App = () => {
 
   const [ids, setIds] = useState("");
 
-  const [validmail, setIsvalidmail] = useState(false);
-  const [validFirstName, setIsvalidFirstName] = useState(false);
-  const [validLastName, setIsvalidLastName] = useState(false);
+  const [validmail, setValidmail] = useState(false);
+  const [validFirstName, setValidFirstName] = useState(false);
+  const [validLastName, setValidLastName] = useState(false);
 
   const [users, setUsers] = useState([]);
 
@@ -140,9 +140,9 @@ const App = () => {
     setOpen(false);
     setMode(0);
     setisChange(false);
-    setIsvalidmail(false);
-    setIsvalidFirstName(false);
-    setIsvalidLastName(false);
+    setValidmail(false);
+    setValidFirstName(false);
+    setValidLastName(false);
   };
 
   const onChangeHandler = (event) => {
@@ -176,14 +176,12 @@ const App = () => {
 
   const handleSubmit = (formIndex, toIndex) => {
     if (isChange) {
-      setIsvalidFirstName(
+      setValidFirstName(
         !(userFirstName.length > 0 && userFirstName.length < 46)
       );
-      setIsvalidLastName(
-        !(userLastName.length > 0 && userLastName.length < 46)
-      );
+      setValidLastName(!(userLastName.length > 0 && userLastName.length < 46));
       let regex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-      setIsvalidmail(!regex.test(userEmail));
+      setValidmail(!regex.test(userEmail));
       //handleClose();
     } else {
       store.addNotification({
@@ -205,15 +203,15 @@ const App = () => {
   };
 
   const handleAddSubmit = () => {
-    setExistingMail(false);
-    setIsvalidFirstName(
-      !(userFirstName.length > 0 && userFirstName.length < 46)
-    );
-    setIsvalidLastName(!(userLastName.length > 0 && userLastName.length < 46));
+    let firstNameCheck = userFirstName.length > 0 && userFirstName.length < 46;
+    let lastNameCheck = userLastName.length > 0 && userLastName.length < 46;
     let regex = /^(([^<>()\[\]\\.,;:\s@"]+(\.[^<>()\[\]\\.,;:\s@"]+)*)|(".+"))@((\[[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}])|(([a-zA-Z\-0-9]+\.)+[a-zA-Z]{2,}))$/;
-    setIsvalidmail(!regex.test(userEmail));
+    let mailCheck = regex.test(userEmail);
+    setValidFirstName(!firstNameCheck);
+    setValidLastName(!lastNameCheck);
+    setValidmail(!mailCheck);
 
-    if (regex.test(userEmail) && !validFirstName && !validLastName) {
+    if (mailCheck && firstNameCheck && lastNameCheck) {
       let insertDB = [...users];
 
       const existingMailIndex = users.findIndex(
