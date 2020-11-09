@@ -52,16 +52,30 @@ const App = () => {
 
   const [disable, setDisable] = useState(false);
 
+  /*
+   *useEffect hookks  to handle change events in select component.
+   *It let React that your component needs to do db fetching after render
+   *fetches db data
+   */
   useEffect(() => {
     db.collection("users")
       .doc("Z0UyTfDgC7XRSVc1izGZ")
       .onSnapshot((snapshot) => setUsers(snapshot.data().data));
   }, []);
-
+  /*
+   *useEffect hookks  to handle change events in select component.
+   *It let React that your component needs to load the data after fetching the data after render calls
+   *loads db  data after fetches
+   */
   useEffect(() => {
     setisLoad(false);
   }, [users]);
 
+  /*
+   *handleChange function to handle change events in select component.
+   *takes event and id as argument.
+   *performs enabling/disabling field validations for swapping/updating the fields.
+   */
   const handleChange = (event, id) => {
     setIds(event.target.value);
     if (event.target.value === id) {
@@ -80,6 +94,11 @@ const App = () => {
     }
   };
 
+  /*
+   *handleClickAdd function to open the add dialog.
+   *takes event as argument.
+   *performs data limit validations before opening the add dialog.
+   */
   const handleClickAdd = (event) => {
     if (users.length >= 20) {
       toast("Cannot Perform Add Operation as data exceeds the limit 20", {
@@ -95,12 +114,20 @@ const App = () => {
     }
   };
 
+  /*
+   *handleClickEdit function to open the edit  dialog.
+   *takes event and rowData as argument.
+   */
   const handleClickEdit = (event, rowData) => {
     setOpen(true);
     setMode(2);
     setUserData(rowData);
   };
 
+  /*
+   *handleClickDelete function to perform delete operation.
+   *takes event and rowData as argument.
+   */
   const handleClickDelete = (event, rowData) => {
     let insertDB = [...users];
 
@@ -118,6 +145,10 @@ const App = () => {
     });
   };
 
+  /*
+   *handleClose function to close the dialog.
+   *to reset the modes and state to intial state.
+   */
   const handleClose = () => {
     setOpen(false);
     setMode(0);
@@ -129,6 +160,10 @@ const App = () => {
     setIds("");
   };
 
+  /*
+   *onChangeHandler function to perform change operation for the fields the dialog.
+   *takes event as parameters.
+   */
   const onChangeHandler = (event) => {
     setisChange(true);
     switch (event.target.id) {
@@ -158,6 +193,11 @@ const App = () => {
     }
   };
 
+  /*
+   *handleSubmit function to perform Update operation.
+   *takes Id as parameters.
+   *performs Input validations check before updating the fields.
+   */
   const handleSubmit = (Id) => {
     if (isChange) {
       let firstNameCheck =
@@ -214,6 +254,10 @@ const App = () => {
     }
   };
 
+  /*
+   *handleAddSubmit function to perform Add operation.
+   *performs Input validations check before adding the data.
+   */
   const handleAddSubmit = () => {
     let firstNameCheck = userFirstName.length > 0 && userFirstName.length < 46;
     let lastNameCheck = userLastName.length > 0 && userLastName.length < 46;
@@ -264,6 +308,11 @@ const App = () => {
     }
   };
 
+  /*
+   *swapData function to perform Swap  operation.
+   *takes source and target Id as parameters.
+   *Compares datas and swaps it.
+   */
   const swapData = (frommId, toId) => {
     let infoData = [...users];
     const frommIndex = infoData.findIndex((each) => each.id === frommId);
